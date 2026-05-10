@@ -9,9 +9,8 @@ esp32:
 
 esp32_touch:
   setup_mode: false
-  measurement_duration: 2ms
-  sleep_duration: 1ms
-
+  measurement_duration: 1ms  
+  sleep_duration: 0.5ms       
 logger:
   level: INFO
 
@@ -80,26 +79,32 @@ light:
     id: stair_leds
 
 # ============================================================
-# TOUCH SENSOR with Brightness & Duration Control
+# LOGIC SCRIPT (Handles the timer separately)
 # ============================================================
+script:
+  - id: handle_stair_timer
+    mode: restart  
+    then:
+      - light.turn_on:
+          id: stair_leds
+          transition_length: 1s 
+          brightness: !lambda "return id(led_brightness).state / 100.0;"
+      - delay: !lambda "return id(light_duration).state * 1000;"
+      - light.turn_off:
+          id: stair_leds
+          transition_length: 4s
 
+# ============================================================
+# TOUCH SENSOR (Now just triggers the script)
+# ============================================================
 binary_sensor:
   - platform: esp32_touch
     name: "Staircase Touch Pad"
     pin: GPIO1
-    threshold: 1000000
+    threshold: 30000          
     filters:
-      - delayed_on: 50ms
+      - delayed_on: 8ms        
+      - delayed_off: 50ms     
     on_press:
       then:
-        # Turn ON with 0.8s fade at the configured brightness
-        - light.turn_on:
-            id: stair_leds
-            transition_length: 0.8s
-            brightness: !lambda "return id(led_brightness).state / 100.0;"
-        # Wait for configured duration
-        - delay: !lambda "return id(light_duration).state * 1000;"
-        # Turn OFF with 4s fade
-        - light.turn_off:
-            id: stair_leds
-            transition_length: 4s
+        - script.execute: handle_stair_timer
