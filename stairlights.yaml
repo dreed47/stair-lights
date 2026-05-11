@@ -65,6 +65,44 @@ number:
     restore_value: true
     mode: slider
 
+  - platform: template
+    name: "Touch Threshold"
+    id: touch_threshold_ui
+    icon: "mdi:target-variant"
+    min_value: 1000
+    max_value: 300000  
+    step: 1000
+    initial_value: 50000
+    optimistic: true
+    mode: slider      
+    on_value:
+      then:
+        - lambda: 'id(stair_touch).set_threshold(x);'
+
+  - platform: template
+    name: "Touch Filter On"
+    id: touch_filter_on
+    icon: "mdi:clock-start"
+    unit_of_measurement: "ms"
+    min_value: 0
+    max_value: 100
+    step: 1
+    initial_value: 8
+    optimistic: true
+    mode: slider     
+
+  - platform: template
+    name: "Touch Filter Off"
+    id: touch_filter_off
+    icon: "mdi:clock-end"
+    unit_of_measurement: "ms"
+    min_value: 0
+    max_value: 100
+    step: 1
+    initial_value: 50
+    optimistic: true
+    mode: slider     
+
 # ============================================================
 # OUTPUT & LIGHT
 # ============================================================
@@ -88,26 +126,38 @@ script:
   - id: handle_stair_timer
     mode: restart  
     then:
-      - light.turn_on:
-          id: stair_leds
-          transition_length: 1s 
-          brightness: !lambda "return id(led_brightness).state / 100.0;"
-      - delay: !lambda "return id(light_duration).state * 1000;"
-      - light.turn_off:
-          id: stair_leds
-          transition_length: 4s
+      # DYNAMIC DELAYED ON: Wait for the filter time
+      - delay: !lambda "return id(touch_filter_on).state;"
+      
+      # Verify touch is still active before turning on
+      - if:
+          condition:
+            binary_sensor.is_on: stair_touch
+          then:
+            - light.turn_on:
+                id: stair_leds
+                transition_length: 1s 
+                brightness: !lambda "return id(led_brightness).state / 100.0;"
+            
+            # Wait for the main duration
+            - delay: !lambda "return id(light_duration).state * 1000;"
+            
+            # DYNAMIC DELAYED OFF: Add a little extra "hang time" if needed
+            - delay: !lambda "return id(touch_filter_off).state;"
+            
+            - light.turn_off:
+                id: stair_leds
+                transition_length: 4s
 
 # ============================================================
-# TOUCH SENSOR (Now just triggers the script)
+# TOUCH SENSOR
 # ============================================================
 binary_sensor:
   - platform: esp32_touch
     name: "Staircase Touch Pad"
+    id: stair_touch
     pin: GPIO1
-    threshold: 50000          
-    filters:
-      - delayed_on: 8ms        
-      - delayed_off: 50ms     
+    threshold: 50000 # Default boot value         
     on_press:
       then:
         - script.execute: handle_stair_timer
