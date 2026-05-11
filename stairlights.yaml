@@ -10,9 +10,12 @@ esp32:
 esp32_touch:
   setup_mode: false
   measurement_duration: 1ms  
-  sleep_duration: 0.5ms       
+  sleep_duration: 0.5ms     
+
 logger:
   level: INFO
+  logs:
+    esp32_touch: ERROR
 
 api:
   encryption:
@@ -101,7 +104,7 @@ binary_sensor:
   - platform: esp32_touch
     name: "Staircase Touch Pad"
     pin: GPIO1
-    threshold: 30000          
+    threshold: 50000          
     filters:
       - delayed_on: 8ms        
       - delayed_off: 50ms     
