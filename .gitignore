@@ -1,7 +1,5 @@
-.history
-
-# Ignore .hosrty folder
-.hosrty/
+# Ignore .history folder
+.history/
 
 # Ignore KiCad backups
 **/StairLights-backups/
